@@ -9,7 +9,7 @@ import {
 import { 
   createTransferInstruction, 
   getAssociatedTokenAddress,
-  TOKEN_PROGRAM_ID 
+  getOrCreateAssociatedTokenAccount
 } from '@solana/spl-token';
 
 export async function POST(request: NextRequest) {
@@ -19,8 +19,9 @@ export async function POST(request: NextRequest) {
       recipientAddress, 
       amount, 
       disasterEventId,
-      userPublicKey,
-      signedTransaction 
+      // The treasury keypair should be securely stored on the server
+      // For this example, we assume there's a mechanism to sign with it.
+      // We will prepare the transaction and return it for signing.
     } = body;
 
     if (!recipientAddress || !amount || !disasterEventId) {
@@ -30,97 +31,69 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const connection = new Connection(process.env.SOLANA_RPC_URL!);
-    const treasuryAddress = new PublicKey(process.env.TREASURY_WALLET_ADDRESS!);
+    const connection = new Connection(process.env.SOLANA_RPC_URL!, 'confirmed');
+    const treasuryPublicKey = new PublicKey(process.env.TREASURY_WALLET_ADDRESS!);
     const usdcMint = new PublicKey(process.env.TREASURY_USDC_MINT!);
     const recipientPubkey = new PublicKey(recipientAddress);
 
-    // Get treasury's USDC token account
-    const treasuryTokenAccount = await getAssociatedTokenAddress(
+    // This is a placeholder for the fee payer, which should be the treasury.
+    // In a real app, the treasury's keypair would be used to sign.
+    const feePayer = treasuryPublicKey;
+
+    // Get the treasury's associated token account.
+    const treasuryTokenAccountAddress = await getAssociatedTokenAddress(
       usdcMint,
-      treasuryAddress
+      treasuryPublicKey
     );
 
-    // Get or create recipient's USDC token account
-    const recipientTokenAccount = await getAssociatedTokenAddress(
+    // Get or create the recipient's associated token account.
+    // The treasury (feePayer) will pay for its creation if it doesn't exist.
+    const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      feePayer, // The account that will pay for the creation
       usdcMint,
-      recipientPubkey
+      recipientPubkey,
+      false // Idempotent
     );
-
-    // Check if recipient token account exists
-    const recipientAccountInfo = await connection.getAccountInfo(recipientTokenAccount);
     
-    let transaction = new Transaction();
+    const transaction = new Transaction();
 
-    // If recipient doesn't have USDC account, create it
-    if (!recipientAccountInfo) {
-      const createAccountIx = createTransferInstruction(
-        treasuryTokenAccount,
-        recipientTokenAccount,
-        treasuryAddress,
-        0 // 0 amount for account creation
-      );
-      transaction.add(createAccountIx);
-    }
-
-    // Add USDC transfer instruction
-    const transferIx = createTransferInstruction(
-      treasuryTokenAccount,
-      recipientTokenAccount,
-      treasuryAddress,
-      amount
+    // Add the instruction to transfer USDC.
+    transaction.add(
+      createTransferInstruction(
+        treasuryTokenAccountAddress, // From
+        recipientTokenAccount.address,   // To
+        treasuryPublicKey,             // Authority
+        amount                         // Amount
+      )
     );
-    transaction.add(transferIx);
 
-    // Get recent blockhash
     const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
-    transaction.feePayer = treasuryAddress;
+    transaction.feePayer = feePayer;
 
-    // If user provided signed transaction, use it
-    if (signedTransaction) {
-      // Verify and send the signed transaction
-      const tx = Transaction.from(Buffer.from(signedTransaction, 'base64'));
-      const signature = await connection.sendRawTransaction(tx.serialize());
-      
-      // Confirm transaction
-      await connection.confirmTransaction(signature);
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          signature,
-          disasterEventId,
-          recipientAddress,
-          amount,
-          explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=mainnet-beta`
-        }
-      });
-    }
-
-    // Return unsigned transaction for client to sign
+    // The transaction is ready, but it needs to be signed by the treasury's keypair.
+    // We will return the unsigned transaction to the client to be signed by a wallet.
+    // In a real-world scenario, this would be handled by a secure backend signing service.
     const serializedTransaction = transaction.serialize({
       requireAllSignatures: false,
-      verifySignatures: false
     });
 
     return NextResponse.json({
       success: true,
       data: {
         unsignedTransaction: serializedTransaction.toString('base64'),
-        disasterEventId,
-        recipientAddress,
-        amount,
-        instructions: transaction.instructions.length
+        message: "Transaction created. Please sign with the treasury wallet."
       }
     });
 
   } catch (error) {
     console.error('Payout execution API error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { 
         error: 'Failed to execute payout',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: errorMessage
       },
       { status: 500 }
     );

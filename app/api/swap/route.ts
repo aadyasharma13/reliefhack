@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,15 +27,10 @@ export async function POST(request: NextRequest) {
       const outputMintPublicKey = new PublicKey(quoteResponse.outputMint);
       
       // Find the associated token account address using the reliable findProgramAddressSync method
-      const [associatedTokenAccount] = PublicKey.findProgramAddressSync(
-        [
-          destinationPublicKey.toBuffer(),
-          TOKEN_PROGRAM_ID.toBuffer(),
-          outputMintPublicKey.toBuffer(),
-        ],
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      );
-      destinationTokenAccount = associatedTokenAccount.toBase58();
+      destinationTokenAccount = (await getAssociatedTokenAddress(
+        outputMintPublicKey,
+        destinationPublicKey
+      )).toBase58();
     }
     
     // Jupiter Swap API endpoint
