@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import Layout from '@/components/layout';
+import ClientOnlyDate from '@/components/client-only-date';
+import Link from 'next/link';
 import { 
   Users, 
   Trophy, 
@@ -298,7 +300,7 @@ export default function CommunityPage() {
                         </div>
                         <div className="flex items-center space-x-1">
                           <Calendar className="h-4 w-4" />
-                          <span>Joined {new Date(member.joinDate).toLocaleDateString()}</span>
+                          <span>Joined <ClientOnlyDate dateString={member.joinDate} /></span>
                         </div>
                       </div>
                       
@@ -364,10 +366,12 @@ export default function CommunityPage() {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Get Involved</h2>
               <div className="space-y-3">
-                <button className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                  <Heart className="h-5 w-5" />
-                  <span>Make a Donation</span>
-                </button>
+                <Link href="/donate" passHref>
+                  <button className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    <Heart className="h-5 w-5" />
+                    <span>Make a Donation</span>
+                  </button>
+                </Link>
                 <button className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                   <Users className="h-5 w-5" />
                   <span>Volunteer</span>

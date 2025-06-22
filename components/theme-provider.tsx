@@ -35,13 +35,17 @@ export function ThemeProvider({
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = React.useState<Theme>(defaultTheme)
+  const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
+    setMounted(true)
     const storedTheme = (localStorage.getItem(storageKey) as Theme) || defaultTheme
     setTheme(storedTheme)
   }, [storageKey, defaultTheme])
 
   React.useEffect(() => {
+    if (!mounted) return
+    
     const root = window.document.documentElement
 
     root.classList.remove("light", "dark")
@@ -56,11 +60,20 @@ export function ThemeProvider({
     root.classList.add(effectiveTheme)
 
     localStorage.setItem(storageKey, theme)
-  }, [theme, enableSystem, storageKey])
+  }, [theme, enableSystem, storageKey, mounted])
 
   const value = {
     theme,
     setTheme,
+  }
+
+  // Prevent hydration mismatch by not applying theme until mounted
+  if (!mounted) {
+    return (
+      <ThemeProviderContext.Provider {...props} value={value}>
+        {children}
+      </ThemeProviderContext.Provider>
+    )
   }
 
   return (

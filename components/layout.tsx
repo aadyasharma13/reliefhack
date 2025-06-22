@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useTheme } from './theme-provider'
 import WalletConnectButton from './wallet-connect-button'
+import ClientOnly from './client-only'
 import {
   Sheet,
   SheetContent,
@@ -180,7 +181,18 @@ export default function Layout({ children }: LayoutProps) {
               >
                 <Code className="h-5 w-5" />
               </button>
-              <WalletConnectButton />
+              <ClientOnly
+                fallback={
+                  <div className="flex items-center space-x-2">
+                    <div className="h-5 w-5 text-gray-400"></div>
+                    <div className="bg-primary-600 hover:bg-primary-700 text-white border-0 rounded-lg px-4 py-2 text-sm font-medium">
+                      Connect Wallet
+                    </div>
+                  </div>
+                }
+              >
+                <WalletConnectButton />
+              </ClientOnly>
             </div>
           </div>
         </header>
@@ -226,26 +238,30 @@ export default function Layout({ children }: LayoutProps) {
       )}
       
       {/* Toast Container */}
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme={theme === 'dark' ? 'dark' : 'light'}
-      />
+      <ClientOnly>
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme={theme === 'dark' ? 'dark' : 'light'}
+        />
+      </ClientOnly>
       
       {/* Debug Panel */}
-      <DebugPanel
-        logs={debugLogs}
-        isVisible={debugPanelVisible}
-        onToggle={() => setDebugPanelVisible(!debugPanelVisible)}
-        onClear={() => setDebugLogs([])}
-      />
+      <ClientOnly>
+        <DebugPanel
+          logs={debugLogs}
+          isVisible={debugPanelVisible}
+          onToggle={() => setDebugPanelVisible(!debugPanelVisible)}
+          onClear={() => setDebugLogs([])}
+        />
+      </ClientOnly>
     </div>
   )
 } 

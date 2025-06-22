@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Layout from '@/components/layout';
 import { ChevronDown, Zap, CheckCircle, Clock, DollarSign } from 'lucide-react';
-import { showTriggerStarted, showTriggerCompleted } from '@/lib/toast';
+import { showTriggerStarted, showTriggerCompleted, showError } from '@/lib/toast';
 import PayoutLog, { PayoutEntry } from '@/components/payout-log';
 
 // Mock wallet addresses for payouts
@@ -44,37 +44,70 @@ export default function TriggerPage() {
     setIsTriggering(true);
     showTriggerStarted();
     
-    // Simulate payout process
-    const newPayouts = mockWallets.map((wallet, index) => ({
-      wallet: wallet.address,
-      amount: wallet.amount,
-      timestamp: new Date().toLocaleTimeString(),
-      status: 'pending' as const,
-    }));
-    
-    setPayouts(newPayouts);
-    
-    // Simulate processing time and complete payouts
-    setTimeout(() => {
-      setPayouts(prev => prev.map(payout => ({ ...payout, status: 'completed' as const })));
-      setIsTriggering(false);
-      showTriggerCompleted();
-      
-      // Create payout log data
-      const disasterName = disasterTypes.find(d => d.value === selectedDisaster)?.label || selectedDisaster;
-      const payoutEntries: PayoutEntry[] = mockWallets.map((wallet, index) => ({
-        recipient: wallet.address,
-        amount: wallet.amount,
-        txId: `mock-tx-${Date.now()}-${index}`, // Mock transaction ID
-        timestamp: new Date().toLocaleTimeString(),
-      }));
-      
-      setPayoutLogData({
-        eventSummary: `${disasterName} Disaster Event Triggered`,
-        payouts: payoutEntries,
-        eventTimestamp: new Date().toLocaleString(),
+    try {
+      // Call our manual trigger API
+      const response = await fetch('/api/trigger/manual', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          disasterType: selectedDisaster,
+          location: 'Demo Location',
+          severity: 'High',
+          description: `Manual trigger for ${selectedDisaster} disaster`,
+          estimatedDamage: 1000000,
+          affectedPopulation: 50000,
+        }),
       });
-    }, 3000);
+
+      if (!response.ok) {
+        throw new Error('Failed to trigger disaster event');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        console.log('Disaster triggered:', data.data);
+        
+        // Simulate payout process
+        const newPayouts = mockWallets.map((wallet, index) => ({
+          wallet: wallet.address,
+          amount: wallet.amount,
+          timestamp: new Date().toLocaleTimeString(),
+          status: 'pending' as const,
+        }));
+        
+        setPayouts(newPayouts);
+        
+        // Simulate processing time and complete payouts
+        setTimeout(() => {
+          setPayouts(prev => prev.map(payout => ({ ...payout, status: 'completed' as const })));
+          setIsTriggering(false);
+          showTriggerCompleted();
+          
+          // Create payout log data
+          const disasterName = disasterTypes.find(d => d.value === selectedDisaster)?.label || selectedDisaster;
+          const payoutEntries: PayoutEntry[] = mockWallets.map((wallet, index) => ({
+            recipient: wallet.address,
+            amount: wallet.amount,
+            txId: `tx-${data.data.disasterEvent.id}-${index}`, // Use real disaster event ID
+            timestamp: new Date().toLocaleTimeString(),
+          }));
+          
+          setPayoutLogData({
+            eventSummary: `${disasterName} Disaster Event Triggered`,
+            payouts: payoutEntries,
+            eventTimestamp: new Date().toLocaleString(),
+          });
+        }, 3000);
+      } else {
+        throw new Error(data.error || 'Failed to trigger disaster event');
+      }
+    } catch (error) {
+      console.error('Trigger error:', error);
+      showError('Failed to trigger disaster event. Please try again.');
+      setIsTriggering(false);
+    }
   };
 
   return (
@@ -202,11 +235,7 @@ export default function TriggerPage() {
 
         {/* Payout Log */}
         {payoutLogData && (
-          <PayoutLog
-            eventSummary={payoutLogData.eventSummary}
-            payouts={payoutLogData.payouts}
-            eventTimestamp={payoutLogData.eventTimestamp}
-          />
+          <PayoutLog {...payoutLogData} />
         )}
       </div>
     </Layout>

@@ -1,14 +1,13 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { ThemeProvider } from '@/components/theme-provider'
-import { SolanaWalletProvider } from '@/components/wallet-provider'
+import WalletContextProvider from '@/components/providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'ReliefDAO',
-  description: 'Decentralized Disaster Management Platform powered by Solana',
+  title: 'Disaster Relief DAO',
+  description: 'A decentralized platform for transparent and efficient disaster relief fundraising and distribution.',
 }
 
 export default function RootLayout({
@@ -18,17 +17,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <SolanaWalletProvider>
-            {children}
-          </SolanaWalletProvider>
-        </ThemeProvider>
+      <body className={inter.className} suppressHydrationWarning>
+        <WalletContextProvider>
+          {children}
+        </WalletContextProvider>
       </body>
     </html>
   )

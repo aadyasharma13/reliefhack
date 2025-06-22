@@ -13,6 +13,8 @@ import {
   Clock,
   Heart
 } from 'lucide-react';
+import ClientOnlyDate from '@/components/client-only-date';
+import Link from 'next/link';
 
 // Mock events data
 const mockEvents = [
@@ -281,14 +283,16 @@ export default function EventsPage() {
                         </div>
                         <div className="flex items-center space-x-1">
                           <Calendar className="h-4 w-4" />
-                          <span>{new Date(event.date).toLocaleDateString()}</span>
+                          <ClientOnlyDate dateString={event.date} />
                         </div>
                       </div>
                       
-                      <button className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                        <Heart className="h-4 w-4" />
-                        <span>Donate</span>
-                      </button>
+                      <Link href="/donate" passHref>
+                        <button className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                          <Heart className="h-4 w-4" />
+                          <span>Donate</span>
+                        </button>
+                      </Link>
                     </div>
                   </div>
                 </div>

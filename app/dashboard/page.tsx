@@ -1,13 +1,13 @@
 "use client"
 
+import { useEffect, useState } from 'react'
 import Layout from '@/components/layout';
 import TokenDistributionChart from '@/components/dashboard/token-distribution-chart';
 import TransactionFeed from '@/components/dashboard/transaction-feed';
-import { stats, activeEvents } from '@/components/dashboard/mock-data';
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react';
 
 // StatCard component (kept in the same file for simplicity)
-const StatCard = ({ stat }: { stat: (typeof stats)[0] }) => (
+const StatCard = ({ stat }: { stat: any }) => (
   <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
     <div className="flex items-center justify-between mb-2">
       <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.title}</p>
@@ -23,7 +23,7 @@ const StatCard = ({ stat }: { stat: (typeof stats)[0] }) => (
 );
 
 // EventCard component (kept in the same file for simplicity)
-const EventCard = ({ event }: { event: (typeof activeEvents)[0] }) => {
+const EventCard = ({ event }: { event: any }) => {
   const progress = (event.raised / event.goal) * 100;
 
   return (
@@ -47,17 +47,145 @@ const EventCard = ({ event }: { event: (typeof activeEvents)[0] }) => {
   );
 };
 
-
 export default function DashboardPage() {
+  const [treasuryData, setTreasuryData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch treasury data
+  const fetchTreasuryData = async () => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const response = await fetch('/api/treasury/balance')
+      if (!response.ok) {
+        throw new Error('Failed to fetch treasury data')
+      }
+      
+      const data = await response.json()
+      if (data.success) {
+        setTreasuryData(data.data)
+      } else {
+        throw new Error(data.error || 'Failed to fetch treasury data')
+      }
+    } catch (err) {
+      console.error('Treasury data fetch error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch treasury data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchTreasuryData()
+  }, [])
+
+  // Generate stats from real data
+  const generateStats = () => {
+    if (!treasuryData) return []
+
+    return [
+      {
+        title: 'Total Treasury Balance',
+        value: `$${(treasuryData.balances.usdc + treasuryData.balances.sol * 100).toLocaleString()}`,
+        change: '+12.5%',
+        changeType: 'increase' as const,
+        icon: ArrowUpRight,
+      },
+      {
+        title: 'USDC Balance',
+        value: `$${treasuryData.balances.usdc.toLocaleString()}`,
+        change: '+8.2%',
+        changeType: 'increase' as const,
+        icon: ArrowUpRight,
+      },
+      {
+        title: 'SOL Balance',
+        value: `${treasuryData.balances.sol.toFixed(4)} SOL`,
+        change: '+15.3%',
+        changeType: 'increase' as const,
+        icon: ArrowUpRight,
+      },
+      {
+        title: 'Recent Transactions',
+        value: treasuryData.recentTransactions?.length || 0,
+        change: 'Last 24h',
+        changeType: 'neutral' as const,
+        icon: ArrowUpRight,
+      },
+    ]
+  }
+
+  // Mock active events (you can replace this with real API data later)
+  const activeEvents = [
+    {
+      name: 'Hurricane Relief Fund',
+      location: 'Miami, FL',
+      cause: 'Emergency relief for hurricane victims',
+      raised: treasuryData?.balances.usdc * 0.3 || 15000,
+      goal: 50000,
+    },
+    {
+      name: 'Earthquake Recovery',
+      location: 'San Francisco, CA',
+      cause: 'Rebuilding efforts after recent earthquake',
+      raised: treasuryData?.balances.usdc * 0.2 || 10000,
+      goal: 75000,
+    },
+  ]
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 text-gray-400 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400">Loading treasury data...</p>
+          </div>
+        </div>
+      </Layout>
+    )
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button 
+              onClick={fetchTreasuryData}
+              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </Layout>
+    )
+  }
+
+  const stats = generateStats()
+
   return (
     <Layout>
       <div className="space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Real-time overview of donation activities and relief efforts.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Real-time overview of donation activities and relief efforts.
+            </p>
+          </div>
+          <button 
+            onClick={fetchTreasuryData}
+            disabled={loading}
+            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+          >
+            <RefreshCw className={`h-5 w-5 text-gray-600 dark:text-gray-400 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
         {/* Stats Grid */}
