@@ -3,8 +3,15 @@
 import { useState } from 'react'
 import Layout from '@/components/layout'
 
+interface TestResult {
+  success: boolean
+  data?: any
+  error?: string
+  status?: number
+}
+
 export default function TestPage() {
-  const [results, setResults] = useState<any>({})
+  const [results, setResults] = useState<Record<string, TestResult>>({})
   const [loading, setLoading] = useState<string | null>(null)
 
   const testAPI = async (endpoint: string, method: string = 'GET', body?: any) => {
@@ -17,12 +24,12 @@ export default function TestPage() {
       })
       
       const data = await response.json()
-      setResults(prev => ({
+      setResults((prev: Record<string, TestResult>) => ({
         ...prev,
         [endpoint]: { success: response.ok, data, status: response.status }
       }))
     } catch (error) {
-      setResults(prev => ({
+      setResults((prev: Record<string, TestResult>) => ({
         ...prev,
         [endpoint]: { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
       }))
